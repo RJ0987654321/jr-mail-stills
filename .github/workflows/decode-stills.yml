@@ -2,7 +2,8 @@ name: decode-stills
 on:
   push:
     paths:
-      - '**/*.b64'
+      - "week5/thumb-play.jpg.b64.d/**"
+      - "week5/*.b64"
   workflow_dispatch:
 permissions:
   contents: write
@@ -11,23 +12,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Decode .b64 to binary siblings
+      - name: Assemble and decode thumb
         run: |
           set -euo pipefail
-          found=0
+          if [ -d week5/thumb-play.jpg.b64.d ]; then
+            cat $(ls week5/thumb-play.jpg.b64.d/*.txt | sort) > /tmp/thumb.b64
+            base64 -d < /tmp/thumb.b64 > week5/thumb-play.jpg
+            echo "assembled $(wc -c < /tmp/thumb.b64) b64 -> $(wc -c < week5/thumb-play.jpg) jpg"
+          fi
           while IFS= read -r -d '' f; do
             out="${f%.b64}"
             base64 -d < "$f" > "$out"
-            echo "decoded $f -> $out ($(wc -c < "$out") bytes)"
-            found=1
-          done < <(find . -type f -name '*.b64' -print0)
-          if [ "$found" -eq 0 ]; then echo "no .b64 files"; exit 0; fi
+            echo "decoded $f -> $out"
+          done < <(find . -type f -name '*.b64' -print0 || true)
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           if git diff --cached --quiet; then
             echo "no changes"
           else
-            git commit -m "decode stills from b64"
+            git commit -m "decode stills from b64 chunks"
             git push
           fi
